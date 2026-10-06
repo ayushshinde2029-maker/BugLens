@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BugLens — Multimodal UI Debugging Assistant</title>
+  <meta name="description" content="BugLens: Multimodal UI debugging assistant based on Gemma 4. See the bug. Trace the cause. Verify the fix.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header / App Shell -->
+    <header class="app-header">
+      <div class="brand-row">
+        <div class="logo-mark" aria-hidden="true">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9"/>
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M12 3v3"/>
+            <path d="M12 18v3"/>
+            <path d="M3 12h3"/>
+            <path d="M18 12h3"/>
+            <path d="m4.93 4.93 2.12 2.12"/>
+            <path d="m16.95 16.95 2.12 2.12"/>
+            <path d="m4.93 19.07 2.12-2.12"/>
+            <path d="m16.95 7.05 2.12-2.12"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <div class="title-row">
+            <h1 class="brand-title">BugLens</h1>
+            <span class="badge badge-ai">Gemma 4</span>
+          </div>
+          <p class="brand-subtitle">See the bug. Trace the cause. Verify the fix.</p>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <!-- Navigation Tabs -->
+        <nav class="nav-tabs" aria-label="Main Navigation">
+          <button type="button" id="tab-workbench-btn" class="nav-tab active" aria-selected="true" aria-controls="workbench-view">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="18" height="18" x="3" y="3" rx="2"/>
+              <path d="M3 9h18"/>
+              <path d="M9 21V9"/>
+            </svg>
+            Workbench
+          </button>
+          <button type="button" id="tab-dashboard-btn" class="nav-tab" aria-selected="false" aria-controls="dashboard-view">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 3v18h18"/>
+              <path d="m19 9-5 5-4-4-3 3"/>
+            </svg>
+            Dashboard
+            <span id="nav-history-count" class="nav-count-badge">0</span>
+          </button>
+        </nav>
+
+        <div class="header-status">
+          <span class="status-dot"></span>
+          <span class="status-label">Multimodal Diagnostics</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- 1. Workbench View -->
+    <div id="workbench-view" class="view-section">
+      <main class="workbench-grid">
+        
+        <!-- LEFT ZONE: Diagnostic Input -->
+        <section class="workbench-panel input-panel" aria-labelledby="input-heading">
+          <div class="panel-section-title">
+            <h2 id="input-heading" class="panel-title-text">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect width="18" height="18" x="3" y="3" rx="2"/>
+                <path d="M3 9h18"/>
+                <path d="M9 21V9"/>
+              </svg>
+              Diagnostic Input
+            </h2>
+            <span class="panel-step-hint">Step 1: Upload Screenshots &bull; Step 2: Describe Issue</span>
+          </div>
+
+          <!-- Side-by-Side Screenshots Input Area -->
+          <div class="input-duo-wrapper">
+            <div class="screenshots-duo-container">
+              <!-- 1. Before / Current UI (Required) -->
+              <div class="screenshot-box" id="card-before">
+                <div class="box-header-row">
+                  <span class="box-title-label">BEFORE / CURRENT</span>
+                  <span class="helper-badge badge-required">Required</span>
+                </div>
+
+                <!-- Before Dropzone -->
+                <div 
+                  id="drop-zone" 
+                  class="drop-zone" 
+                  role="button" 
+                  tabindex="0" 
+                  aria-label="Upload Before / Current UI screenshot"
+                >
+                  <input 
+                    type="file" 
+                    id="file-input" 
+                    class="file-input-hidden" 
+                    accept="image/png, image/jpeg, image/webp" 
+                    aria-label="Upload Before / Current UI screenshot file"
+                  >
+                  
+                  <div id="dropzone-content" class="dropzone-content">
+                    <div class="upload-icon-wrapper" aria-hidden="true">
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                      </svg>
+                    </div>
+                    <p class="dropzone-primary-text">Upload Screenshot</p>
+                    <p class="dropzone-secondary-text">Drag & drop or <span class="browse-link">browse</span></p>
+                  </div>
+
+                  <!-- Before Image Preview (Hidden initially) -->
+                  <div id="preview-container" class="preview-container hidden" aria-live="polite">
+                    <img id="image-preview" src="" alt="Before UI screenshot preview" class="image-preview">
+                    <div class="preview-meta-bar">
+                      <div class="preview-info-text">
+                        <span id="file-name" class="preview-filename">before.png</span>
+                        <div class="meta-sub">
+                          <span id="file-size">0 KB</span>
+                          <span id="file-dimensions"></span>
+                        </div>
+                      </div>
+                      <div class="preview-actions">
+                        <button type="button" id="replace-image-btn" class="btn-action-sm" title="Replace image">Replace</button>
+                        <button type="button" id="remove-image-btn" class="btn-action-sm btn-action-danger" title="Remove image">Remove</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Visual Flow Connector -->
+              <div class="upload-connector" aria-hidden="true">
+                <span class="connector-line"></span>
+                <span class="connector-arrow">→</span>
+                <span class="connector-line"></span>
+              </div>
+
+              <!-- 2. After / Fixed UI (Optional) -->
+              <div class="screenshot-box" id="card-after">
+                <div class="box-header-row">
+                  <span class="box-title-label">AFTER / FIXED</span>
+                  <span class="helper-badge badge-optional">Optional</span>
+                </div>
+
+                <!-- After Dropzone -->
+                <div 
+                  id="after-drop-zone" 
+                  class="drop-zone drop-zone-opt" 
+                  role="button" 
+                  tabindex="0" 
+                  aria-label="Upload After Fix screenshot (Optional)"
+                >
+                  <input 
+                    type="file" 
+                    id="after-file-input" 
+                    class="file-input-hidden" 
+                    accept="image/png, image/jpeg, image/webp" 
+                    aria-label="Upload After Fix screenshot file (Optional)"
+                  >
+                  
+                  <div id="after-dropzone-content" class="dropzone-content">
+                    <div class="upload-icon-wrapper upload-icon-opt" aria-hidden="true">
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="9 11 12 14 22 4"/>
+                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                      </svg>
+                    </div>
+                    <p class="dropzone-primary-text">Upload Fix Screenshot</p>
+                    <p class="dropzone-secondary-text">For fix verification</p>
+                  </div>
+
+                  <!-- After Image Preview (Hidden initially) -->
+                  <div id="after-preview-container" class="preview-container hidden" aria-live="polite">
+                    <img id="after-image-preview" src="" alt="After fix UI screenshot preview" class="image-preview">
+                    <div class="preview-meta-bar">
+                      <div class="preview-info-text">
+                        <span id="after-file-name" class="preview-filename">after.png</span>
+                        <div class="meta-sub">
+                          <span id="after-file-size">0 KB</span>
+                          <span id="after-file-dimensions"></span>
+                        </div>
+                      </div>
+                      <div class="preview-actions">
+                        <button type="button" id="replace-after-image-btn" class="btn-action-sm" title="Replace image">Replace</button>
+                        <button type="button" id="remove-after-image-btn" class="btn-action-sm btn-action-danger" title="Remove image">Remove</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Problem Description Area -->
+          <div class="description-block">
+            <div class="desc-header-row">
+              <label for="problem-description" class="desc-label">
+                WHAT SEEMS TO BE WRONG?
+              </label>
+              <span id="char-counter" class="char-counter" aria-live="polite">0 chars</span>
+            </div>
+            <textarea 
+              id="problem-description" 
+              class="textarea-input" 
+              rows="3" 
+              placeholder="Describe the UI discrepancy, expected behavior vs observed defect (e.g. 'Header navigation buttons misaligned and banner contrast fails on dark theme')."
+            ></textarea>
+            <div class="desc-footer-hint">
+              <span>Tip: Press <kbd>Ctrl</kbd> + <kbd>Enter</kbd> to analyze.</span>
+            </div>
+          </div>
+
+          <!-- Primary CTA Button -->
+          <div class="action-block">
+            <button 
+              type="button" 
+              id="analyze-btn" 
+              class="btn-primary-cta" 
+              disabled 
+              aria-disabled="true"
+            >
+              <span class="btn-sparkle">✦</span>
+              <span>ANALYZE WITH GEMMA 4</span>
+              <span class="btn-arrow">→</span>
+            </button>
+          </div>
+        </section>
+
+
+        <!-- RIGHT ZONE: Diagnostic Result -->
+        <section class="workbench-panel results-panel" aria-labelledby="results-heading">
+          <div class="panel-section-title results-section-title">
+            <h2 id="results-heading" class="panel-title-text">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+              </svg>
+              Diagnostic Result
+            </h2>
+            <span class="report-state-tag" id="report-status-tag">Awaiting Input</span>
+          </div>
+
+          <!-- Empty State -->
+          <div id="empty-state" class="results-empty-state" aria-live="polite">
+            <div class="empty-illustration" aria-hidden="true">
+              <div class="scan-grid">
+                <div class="scan-beam"></div>
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
+                  <circle cx="9" cy="9" r="2"/>
+                  <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+                </svg>
+              </div>
+            </div>
+            <h3 class="empty-title">Diagnostics Ready</h3>
+            <p class="empty-subtitle">
+              Upload a screenshot and describe the problem to get immediate UI health scores, issue verdicts, and fix verification.
+            </p>
+          </div>
+
+          <!-- Loading State -->
+          <div id="loading-state" class="results-loading-state hidden" aria-live="polite">
+            <div class="loading-spinner" aria-hidden="true"></div>
+            <h3 class="loading-title">Gemma 4 is analyzing the UI...</h3>
+            <p class="loading-subtitle">
+              Evaluating layout bounds, visual hierarchy, contrast ratios, and verifying fix outcomes.
+            </p>
+          </div>
+
+          <!-- Error State -->
+          <div id="error-container" class="results-error-state hidden" aria-live="assertive">
+            <div class="error-icon" aria-hidden="true">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+            </div>
+            <h3 class="error-title">Analysis Failed</h3>
+            <p id="error-message" class="error-message">An error occurred while communicating with Gemma 4.</p>
+          </div>
+
+          <!-- Active Visual Diagnostic Report -->
+          <div id="report-container" class="report-content-body hidden" aria-live="polite">
+            
+            <!-- 1. Top Verdict Banner + 4 Core Metrics -->
+            <div class="diag-summary-block">
+              <!-- Verdict Banner -->
+              <div id="report-verdict-banner" class="verdict-banner verdict-bug">
+                <span id="verdict-icon" class="verdict-icon">✕</span>
+                <span id="verdict-text" class="verdict-text">UI BUG DETECTED</span>
+              </div>
+
+              <!-- 4 Numbers Grid -->
+              <div class="core-metrics-row">
+                <!-- UI Health -->
+                <div class="core-metric-card">
+                  <span class="metric-tiny-label">UI HEALTH</span>
+                  <div class="metric-primary-val">
+                    <span id="report-health-score" class="num-large">55</span>
+                    <span class="denom">/ 100</span>
+                  </div>
+                  <div class="metric-hbar-track">
+                    <div id="report-health-bar" class="metric-hbar-fill" style="width: 55%;"></div>
+                  </div>
+                </div>
+
+                <!-- Severity -->
+                <div class="core-metric-card">
+                  <span class="metric-tiny-label">SEVERITY</span>
+                  <div class="metric-primary-val">
+                    <span id="report-severity-badge" class="num-large sev-text">MED</span>
+                  </div>
+                  <div class="sev-segmented-track" aria-label="Detected severity level">
+                    <span id="sev-seg-low" class="sev-seg" title="Low">LOW</span>
+                    <span id="sev-seg-medium" class="sev-seg" title="Medium">MED</span>
+                    <span id="sev-seg-high" class="sev-seg" title="High">HIGH</span>
+                    <span id="sev-seg-critical" class="sev-seg" title="Critical">CRIT</span>
+                  </div>
+                </div>
+
+                <!-- AI Confidence -->
+                <div class="core-metric-card">
+                  <span class="metric-tiny-label">AI CONFIDENCE</span>
+                  <div class="metric-primary-val">
+                    <span id="report-confidence-pct" class="num-large">95%</span>
+                  </div>
+                  <span class="metric-sub-note">Gemma 4 Multimodal</span>
+                </div>
+
+                <!-- Issues Count & Category -->
+                <div class="core-metric-card">
+                  <span class="metric-tiny-label">ISSUES</span>
+                  <div class="metric-primary-val">
+                    <span id="report-issue-count" class="num-large">1</span>
+                  </div>
+                  <span id="report-category" class="badge-category-tag">Layout</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 2. Before / After Hero Section (Conditional - Hidden if no After screenshot) -->
+            <div id="fix-verification-section" class="verif-hero-section hidden">
+              <div class="verif-hero-top">
+                <div class="verif-badge-group">
+                  <span class="verif-badge-title">BEFORE / AFTER FIX VERIFICATION</span>
+                </div>
+                <span id="verification-status-verdict" class="badge-status badge-status-fixed">FIXED ✓</span>
+              </div>
+
+              <!-- Side-by-Side Screenshots Frame -->
+              <div class="verif-screen-compare-grid">
+                <div class="verif-screen-col">
+                  <span class="screen-tag tag-before">BEFORE</span>
+                  <div class="screen-frame">
+                    <img id="comparison-before-img" src="" alt="Before screenshot" class="screen-img">
+                  </div>
+                </div>
+                <div class="screen-compare-arrow" aria-hidden="true">→</div>
+                <div class="verif-screen-col">
+                  <span class="screen-tag tag-after">AFTER</span>
+                  <div class="screen-frame">
+                    <img id="comparison-after-img" src="" alt="After fix screenshot" class="screen-img">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Big Horizontal Score Comparison -->
+              <div class="verif-score-compare-bar">
+                <div class="verif-score-progression">
+                  <div class="score-chip">
+                    <span class="chip-tag">BEFORE</span>
+                    <span id="verif-before-health" class="chip-val">55 / 100</span>
+                  </div>
+                  <span class="score-prog-arrow">→</span>
+                  <div class="score-chip">
+                    <span class="chip-tag">AFTER</span>
+                    <span id="verif-after-health" class="chip-val">92 / 100</span>
+                  </div>
+                  <div class="score-chip chip-imp">
+                    <span class="chip-tag">IMPROVEMENT</span>
+                    <span id="verif-improvement-score" class="chip-val">+37</span>
+                  </div>
+                </div>
+
+                <!-- Comparative Horizontal Bars -->
+                <div class="verif-hbar-group">
+                  <div class="verif-hbar-line">
+                    <span class="hbar-name">BEFORE</span>
+                    <div class="hbar-slot">
+                      <div id="verif-before-bar" class="hbar-colored hbar-before-color" style="width: 55%;"></div>
+                    </div>
+                    <span id="verif-before-pct" class="hbar-digit">55</span>
+                  </div>
+                  <div class="verif-hbar-line">
+                    <span class="hbar-name">AFTER</span>
+                    <div class="hbar-slot">
+                      <div id="verif-after-bar" class="hbar-colored hbar-after-color" style="width: 92%;"></div>
+                    </div>
+                    <span id="verif-after-pct" class="hbar-digit">92</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Verification Insights -->
+              <div class="verif-summary-lists">
+                <div class="verif-list-box">
+                  <span class="verif-list-title">Changes Detected</span>
+                  <ul id="verification-changes" class="verif-bullet-list"></ul>
+                </div>
+                <div class="verif-list-box">
+                  <span class="verif-list-title">Remaining / Introduced Issues</span>
+                  <ul id="verification-remaining" class="verif-bullet-list"></ul>
+                  <ul id="verification-new-issues" class="verif-bullet-list"></ul>
+                </div>
+              </div>
+              <p id="verification-explanation" class="verif-note-text"></p>
+            </div>
+
+            <!-- 3. UI Quality Scores (2-Column Grid with Horizontal Progress Bars) -->
+            <div class="diag-section">
+              <div class="section-title-bar">
+                <h3 class="section-header-title">UI QUALITY SCORES</h3>
+                <span class="section-header-sub">Dimensions (0–100)</span>
+              </div>
+              <div class="quality-grid-2col">
+                <!-- Layout -->
+                <div class="quality-row">
+                  <div class="quality-row-meta">
+                    <span class="quality-label">Layout</span>
+                    <span id="score-layout-val" class="quality-num">85 / 100</span>
+                  </div>
+                  <div class="quality-track">
+                    <div id="score-layout-fill" class="quality-fill" style="width: 85%;"></div>
+                  </div>
+                </div>
+
+                <!-- Visual Consistency -->
+                <div class="quality-row">
+                  <div class="quality-row-meta">
+                    <span class="quality-label">Visual Consistency</span>
+                    <span id="score-consistency-val" class="quality-num">60 / 100</span>
+                  </div>
+                  <div class="quality-track">
+                    <div id="score-consistency-fill" class="quality-fill" style="width: 60%;"></div>
+                  </div>
+                </div>
+
+                <!-- Spacing & Alignment -->
+                <div class="quality-row">
+                  <div class="quality-row-meta">
+                    <span class="quality-label">Spacing & Alignment</span>
+                    <span id="score-spacing-val" class="quality-num">85 / 100</span>
+                  </div>
+                  <div class="quality-track">
+                    <div id="score-spacing-fill" class="quality-fill" style="width: 85%;"></div>
+                  </div>
+                </div>
+
+                <!-- Typography -->
+                <div class="quality-row">
+                  <div class="quality-row-meta">
+                    <span class="quality-label">Typography</span>
+                    <span id="score-typography-val" class="quality-num">75 / 100</span>
+                  </div>
+                  <div class="quality-track">
+                    <div id="score-typography-fill" class="quality-fill" style="width: 75%;"></div>
+                  </div>
+                </div>
+
+                <!-- Accessibility -->
+                <div class="quality-row">
+                  <div class="quality-row-meta">
+                    <span class="quality-label">Accessibility</span>
+                    <span id="score-accessibility-val" class="quality-num">70 / 100</span>
+                  </div>
+                  <div class="quality-track">
+                    <div id="score-accessibility-fill" class="quality-fill" style="width: 70%;"></div>
+                  </div>
+                </div>
+
+                <!-- Responsiveness -->
+                <div class="quality-row">
+                  <div class="quality-row-meta">
+                    <span class="quality-label">Responsiveness</span>
+                    <span id="score-responsiveness-val" class="quality-num">80 / 100</span>
+                  </div>
+                  <div class="quality-track">
+                    <div id="score-responsiveness-fill" class="quality-fill" style="width: 80%;"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 4. Detected Issues (Concise Ranked List) -->
+            <div class="diag-section">
+              <div class="section-title-bar">
+                <h3 class="section-header-title">DETECTED ISSUES</h3>
+                <span class="section-header-sub">Ranked findings</span>
+              </div>
+              <div id="detected-issues-list" class="detected-issues-list">
+                <!-- Dynamically populated -->
+              </div>
+              <div id="category-bar-chart-body" class="hidden"></div>
+            </div>
+
+            <!-- 5. Evidence: WHY BUGLENS THINKS THIS (Extremely important for hackathon) -->
+            <div class="diag-section evidence-panel-section">
+              <div class="section-title-bar">
+                <h3 class="section-header-title">WHY BUGLENS THINKS THIS</h3>
+                <span class="section-header-sub">Key Visual Evidence</span>
+              </div>
+              <div id="report-evidence-grid" class="evidence-bullets-list">
+                <!-- Dynamically populated -->
+              </div>
+            </div>
+
+            <!-- 6. Root Cause + Recommended Action (Compact 2-Column Section) -->
+            <div class="diag-section root-action-section">
+              <div class="root-action-grid">
+                <!-- Left: Likely Cause -->
+                <div class="root-cause-col">
+                  <h4 class="col-title-label">LIKELY CAUSE</h4>
+                  <div id="report-causes-grid" class="causes-simple-list">
+                    <!-- Dynamically populated -->
+                  </div>
+                </div>
+
+                <!-- Right: Recommended Action -->
+                <div class="recommended-action-col">
+                  <div class="rec-title-row">
+                    <h4 class="col-title-label action-col-title">RECOMMENDED ACTION</h4>
+                    <span id="report-fix-priority" class="badge-priority-tag">HIGH PRIORITY</span>
+                  </div>
+                  <div id="report-fix-action" class="rec-action-callout">
+                    <!-- Prominent fix recommendation -->
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 7. Collapsible Investigation Checkpoints & Problem Details -->
+            <details class="collapsible-extra-section">
+              <summary class="extra-summary-header">
+                <span class="extra-title">Investigation Priority Checkpoints & Problem Notes</span>
+                <span class="extra-icon">▾</span>
+              </summary>
+              <div class="extra-details-body">
+                <div class="extra-subgroup">
+                  <span class="extra-sub-title">Problem Summary</span>
+                  <p id="report-problem" class="extra-text-desc"></p>
+                </div>
+                <div class="extra-subgroup">
+                  <span class="extra-sub-title">Checklist for Developer</span>
+                  <div id="report-investigation-list" class="priority-checklist">
+                    <!-- Dynamically populated -->
+                  </div>
+                </div>
+              </div>
+            </details>
+
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- 2. Analytics Dashboard View -->
+    <div id="dashboard-view" class="view-section dashboard-view hidden">
+      <!-- Dashboard Top Header -->
+      <section class="workbench-panel dashboard-header-panel">
+        <div class="dashboard-header-content">
+          <div>
+            <h2 class="dash-main-title">Analytics & Verification Dashboard</h2>
+            <p class="dash-main-subtitle">Live metrics calculated directly from your actual BugLens debugging sessions.</p>
+          </div>
+          <div class="dash-actions">
+            <button type="button" id="clear-history-btn" class="btn-danger-outline" title="Clear all stored analysis history">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+              </svg>
+              Clear History
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Dashboard Empty State -->
+      <div id="dash-empty-state" class="workbench-panel dash-empty-panel">
+        <div class="empty-illustration" aria-hidden="true">
+          <div class="scan-grid">
+            <div class="scan-beam"></div>
+            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 3v18h18"/>
+              <path d="m19 9-5 5-4-4-3 3"/>
+            </svg>
+          </div>
+        </div>
+        <h3 class="empty-title">No analyses yet</h3>
+        <p class="empty-subtitle">
+          Perform your first UI bug analysis in the Workbench to see real-time statistics, severity charts, fix verification rates, and history trends.
+        </p>
+        <button type="button" id="start-first-analysis-btn" class="btn-primary-cta btn-cta-compact">
+          Start Your First Analysis →
+        </button>
+      </div>
+
+      <!-- Dashboard Real Content (Visible when analyses exist) -->
+      <div id="dash-content" class="dash-content hidden">
+        <!-- 1. Top 6 Metric Cards -->
+        <div class="metric-cards-grid">
+          <!-- Total Analyses -->
+          <div class="metric-card">
+            <div class="metric-card-header">
+              <span class="metric-label">Total Analyses</span>
+              <div class="metric-icon" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                </svg>
+              </div>
+            </div>
+            <div class="metric-value-row">
+              <span id="metric-total-analyses" class="metric-value">0</span>
+            </div>
+            <span class="metric-subtext">Completed sessions</span>
+          </div>
+
+          <!-- Bugs Detected -->
+          <div class="metric-card">
+            <div class="metric-card-header">
+              <span class="metric-label">Bugs Detected</span>
+              <div class="metric-icon metric-icon-warning" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="9"/>
+                  <line x1="12" y1="8" x2="12" y2="12"/>
+                  <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+              </div>
+            </div>
+            <div class="metric-value-row">
+              <span id="metric-bugs-detected" class="metric-value">0</span>
+            </div>
+            <span class="metric-subtext">Discrepancies identified</span>
+          </div>
+
+          <!-- Fixes Verified -->
+          <div class="metric-card">
+            <div class="metric-card-header">
+              <span class="metric-label">Fixes Verified</span>
+              <div class="metric-icon metric-icon-accent" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                  <path d="m9 12 2 2 4-4"/>
+                </svg>
+              </div>
+            </div>
+            <div class="metric-value-row">
+              <span id="metric-fixes-verified" class="metric-value">0</span>
+            </div>
+            <span class="metric-subtext">Before & After comparisons</span>
+          </div>
+
+          <!-- Fix Success Rate -->
+          <div class="metric-card">
+            <div class="metric-card-header">
+              <span class="metric-label">Fix Success Rate</span>
+              <div class="metric-icon metric-icon-success" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="m9 12 2 2 4-4"/>
+                </svg>
+              </div>
+            </div>
+            <div class="metric-value-row">
+              <span id="metric-success-rate" class="metric-value">0%</span>
+            </div>
+            <span id="metric-success-subtext" class="metric-subtext">0 of 0 fixes worked</span>
+          </div>
+
+          <!-- Regressions Found -->
+          <div class="metric-card">
+            <div class="metric-card-header">
+              <span class="metric-label">Regressions</span>
+              <div class="metric-icon metric-icon-danger" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/>
+                  <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+              </div>
+            </div>
+            <div class="metric-value-row">
+              <span id="metric-regressions" class="metric-value">0</span>
+            </div>
+            <span class="metric-subtext">Defects in After Fix UI</span>
+          </div>
+
+          <!-- Average AI Confidence -->
+          <div class="metric-card">
+            <div class="metric-card-header">
+              <span class="metric-label">Avg AI Confidence</span>
+              <div class="metric-icon metric-icon-cyan" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/>
+                </svg>
+              </div>
+            </div>
+            <div class="metric-value-row">
+              <span id="metric-avg-confidence" class="metric-value">0%</span>
+            </div>
+            <div class="confidence-bar-container">
+              <div id="metric-confidence-fill" class="confidence-bar-fill" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Charts Grid (4 Cards) -->
+        <div class="dash-charts-grid">
+          <!-- Card 1: Bug Severity Breakdown -->
+          <div class="workbench-panel chart-panel">
+            <div class="chart-panel-header">
+              <h3 class="chart-title">Bug Severity Breakdown</h3>
+              <span class="chart-tag">Severity Distribution</span>
+            </div>
+            <div id="severity-chart-body" class="chart-bars-list">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+
+          <!-- Card 2: Fix Verification Status -->
+          <div class="workbench-panel chart-panel">
+            <div class="chart-panel-header">
+              <h3 class="chart-title">Fix Verification Status</h3>
+              <span class="chart-tag">Outcome Ratio</span>
+            </div>
+            <div id="fix-status-chart-body" class="chart-bars-list">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+
+          <!-- Card 3: Analyses Over Time -->
+          <div class="workbench-panel chart-panel">
+            <div class="chart-panel-header">
+              <h3 class="chart-title">Analyses Over Time</h3>
+              <span class="chart-tag">Activity Trend</span>
+            </div>
+            <div id="trend-chart-container" class="trend-chart-container">
+              <!-- Rendered dynamically via responsive SVG -->
+            </div>
+          </div>
+
+          <!-- Card 4: Bug Distribution by Category -->
+          <div class="workbench-panel chart-panel">
+            <div class="chart-panel-header">
+              <h3 class="chart-title">Bug Categories</h3>
+              <span class="chart-tag">Primary Classification</span>
+            </div>
+            <div id="category-chart-body" class="chart-bars-list">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Recent Analyses Table -->
+        <section class="workbench-panel recent-analyses-panel">
+          <div class="chart-panel-header">
+            <h3 class="chart-title">Recent Analyses</h3>
+            <span id="recent-count-tag" class="chart-tag">0 Sessions</span>
+          </div>
+          <div class="table-responsive">
+            <table class="recent-table">
+              <thead>
+                <tr>
+                  <th>Date & Time</th>
+                  <th>Issue / Description</th>
+                  <th>Category</th>
+                  <th>Severity</th>
+                  <th>Fix Status</th>
+                  <th>AI Confidence</th>
+                </tr>
+              </thead>
+              <tbody id="recent-analyses-tbody">
+                <!-- Rendered dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p>BugLens &bull; Multimodal UI Debugging Assistant powered by Gemma 4</p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
