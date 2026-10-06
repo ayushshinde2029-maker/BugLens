@@ -5,12 +5,14 @@ Provides secure integration with Google's Gemini API for Gemma 4 (gemma-4-31b-it
 
 import os
 import re
+import io
 import json
 import base64
 import time
 from pathlib import Path
 from flask import Flask, request, jsonify, send_from_directory
 from dotenv import load_dotenv, dotenv_values
+from PIL import Image
 
 # Resolve absolute path to .env file relative to server.py
 ENV_PATH = Path(__file__).resolve().parent / ".env"
@@ -279,10 +281,6 @@ def parse_structured_response(text: str) -> dict:
     return data
 
 
-import io
-import time
-from PIL import Image
-
 
 def optimize_image_bytes(image_bytes: bytes, mime_type: str = "image/png") -> tuple[bytes, str]:
     """
@@ -502,9 +500,9 @@ Return ONLY a valid JSON object matching this structure."""
 
         # Model hierarchy: Try primary model first; if temporary capacity/500 occurs, retry or fall back smoothly
         models_to_try = [primary_model]
-        if primary_model == "gemma-4-31b-it":
+        if primary_model in ("gemma-4-31b-it", "gemma-3-27b-it"):
             models_to_try.append("gemma-4-26b-a4b-it")
-            models_to_try.append("gemini-2.5-flash")
+            models_to_try.append("gemini-3.8-flash")
 
         response = None
         used_model = primary_model

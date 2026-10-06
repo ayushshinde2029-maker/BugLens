@@ -86,7 +86,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const scoreAccessibilityVal = document.getElementById('score-accessibility-val');
   const scoreAccessibilityFill = document.getElementById('score-accessibility-fill');
   const scoreResponsivenessVal = document.getElementById('score-responsiveness-val');
-  const scoreResponsivenessFill = document.getElementById('score-responsiveness-fill');  // Detected Issue Areas & Content Cards
+  const scoreResponsivenessFill = document.getElementById('score-responsiveness-fill');
+  // Detected Issue Areas & Content Cards
   const detectedIssuesList = document.getElementById('detected-issues-list');
   const categoryBarChartBody = document.getElementById('category-bar-chart-body');
   const reportProblem = document.getElementById('report-problem');
@@ -379,7 +380,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // 4. Quick Meta (AI Confidence & Issues)
-    const confPct = analysis.confidence_pct || (analysis.confidence === 'High' ? 95 : 76);
+    const confPct = analysis.confidence_pct != null ? analysis.confidence_pct : (analysis.confidence === 'High' ? 95 : 76);
     reportConfidencePct.textContent = `${confPct}%`;
     const issueCount = analysis.issue_count !== undefined ? analysis.issue_count : (verdict === 'NO_BUG' ? 0 : 1);
     reportIssueCount.textContent = String(issueCount);
@@ -1051,7 +1052,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     tbody.innerHTML = history.slice(0, 15).map(item => {
       const dateObj = new Date(item.timestamp);
-      const formattedDate = dateObj.toLocaleDateString('en-US', {
+      const formattedDate = dateObj.toLocaleString('en-US', {
         month: 'short',
         day: 'numeric',
         hour: '2-digit',
